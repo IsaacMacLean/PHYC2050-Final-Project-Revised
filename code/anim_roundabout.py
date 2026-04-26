@@ -3,7 +3,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 from matplotlib.animation import FuncAnimation, FFMpegWriter
 
-from round_core import run_roundabout_sim
+from round_core import run_roundabout_sim, ARM_COLORS
 from step4_roundabout_demo import draw_base_roads
 
 
@@ -24,9 +24,16 @@ def main():
     ax.set_xlim(-extent, extent)
     ax.set_ylim(-extent, extent)
     ax.set_xticks([]); ax.set_yticks([])
-    draw_base_roads(ax, radius=radius, extent=extent)
+    draw_base_roads(ax, radius=radius, extent=extent, road_width=14.0)
 
-    scat = ax.scatter(np.zeros(0), np.zeros(0), marker="s", s=180,
+    handles = []
+    for arm in range(4):
+        h = ax.scatter([], [], s=70, c=ARM_COLORS[arm], edgecolor="black", lw=0.6,
+                       label=f"arm {arm} ({['E', 'N', 'W', 'S'][arm]})")
+        handles.append(h)
+    ax.legend(handles=handles, loc="upper right", fontsize=9, framealpha=0.85)
+
+    scat = ax.scatter(np.zeros(0), np.zeros(0), s=70,
                       edgecolor="black", lw=0.6, zorder=10)
     title = ax.text(0.5, 0.97, "", transform=ax.transAxes,
                     ha="center", va="top", fontsize=12,
