@@ -9,3 +9,9 @@ venv/
 
 # Generated outputs are reproducible from scripts; don't bloat the repo.
 figures/*.npz
+
+# LaTeX scratch files
+*.aux
+*.log
+*.out
+*.toc
