@@ -53,6 +53,19 @@ def draw_base_roads(ax, radius=15.0, extent=105.0, road_width=24.0):
     ax.plot(radius * np.cos(theta), radius * np.sin(theta),
             color=CENTER, lw=1.5, dashes=(6, 6), zorder=5)
 
+    arrow = dict(arrowstyle="-|>", color="white", lw=2.2,
+                 mutation_scale=14)
+    label_box = dict(facecolor="black", edgecolor="none", alpha=0.45,
+                     boxstyle="round,pad=0.2")
+    ax.annotate("", xy=(-55, -34), xytext=(-85, -34),
+                arrowprops=arrow, zorder=7)
+    ax.text(-70, -50, "H flow", color="white", fontsize=10,
+            ha="center", va="center", bbox=label_box, zorder=7)
+    ax.annotate("", xy=(34, -55), xytext=(34, -85),
+                arrowprops=arrow, zorder=7)
+    ax.text(50, -70, "V flow", color="white", fontsize=10,
+            ha="center", va="center", rotation=90, bbox=label_box, zorder=7)
+
 
 def main():
     out = run_roundabout_sim(
