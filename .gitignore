@@ -1,0 +1,11 @@
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+
+.DS_Store
+.ipynb_checkpoints/
+
+# Generated outputs are reproducible from scripts; don't bloat the repo.
+figures/*.npz
