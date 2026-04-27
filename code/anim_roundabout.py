@@ -1,9 +1,39 @@
+import math
 import matplotlib.pyplot as plt
 import numpy as np
 from matplotlib.animation import FuncAnimation, FFMpegWriter
 
 from round_core import run_roundabout_sim, ARM_COLORS
 from step4_roundabout_demo import draw_base_roads
+
+
+LANE_OFFSET = 3.0
+BLEND_ZONE = 8.0
+
+
+def lane_position(c, ring_radius):
+    x, y = c["x"], c["y"]
+    theta = c["theta"]
+    state = c["state"]
+    r = math.hypot(x, y)
+
+    cos_t, sin_t = math.cos(theta), math.sin(theta)
+    radial = (cos_t, sin_t)
+
+    if state == "circle":
+        ox, oy = radial
+    else:
+        if state == "approach":
+            perp = (-sin_t, cos_t)
+        else:
+            perp = (sin_t, -cos_t)
+        s = max(0.0, min(1.0, 1.0 - (r - ring_radius) / BLEND_ZONE))
+        bx = (1 - s) * perp[0] + s * radial[0]
+        by = (1 - s) * perp[1] + s * radial[1]
+        norm = math.hypot(bx, by)
+        ox, oy = (bx / norm, by / norm) if norm > 1e-9 else perp
+
+    return x + LANE_OFFSET * ox, y + LANE_OFFSET * oy
 
 
 def main():
@@ -55,15 +85,16 @@ def main():
             dot.set_data([], [])
             dot.set_alpha(0.0)
         for dot, c in zip(car_dots, snap["cars"]):
-            dot.set_data([c["x"]], [c["y"]])
+            x, y = lane_position(c, radius)
+            dot.set_data([x], [y])
             dot.set_color(c["color"])
             dot.set_alpha(1.0)
         title.set_text(f"Four-arm roundabout (t = {snap['time']:.0f} s)")
         return car_dots + [title]
 
     anim = FuncAnimation(fig, update, frames=len(frames), init_func=init,
-                         interval=30, blit=True)
-    writer = FFMpegWriter(fps=33, bitrate=3200,
+                         interval=60, blit=True)
+    writer = FFMpegWriter(fps=16, bitrate=3200,
                           extra_args=["-pix_fmt", "yuv420p"])
     anim.save("../animations/roundabout.mp4", writer=writer, dpi=120,
               savefig_kwargs={"facecolor": "white"})
