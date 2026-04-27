@@ -188,7 +188,7 @@ def run_roundabout_sim(rate_h=0.08, rate_v=0.08, opposite=False, spawn_rates=Non
                     ))
                     next_id += 1
         _update_approach(cars, t, dt, radius, road_vmax, ring_vmax,
-                         min_gap, reaction_time, stop_buffer=2.0, capacity_gap=capacity_gap)
+                         min_gap, reaction_time, stop_buffer=5.0, capacity_gap=capacity_gap)
         _update_circle(cars, t, dt, radius, ring_vmax, follow_gap_min)
         _update_exits(cars, t, dt, road_vmax, finish_r)
         if record and step % record_stride == 0:

@@ -52,7 +52,7 @@
 \maketitle
 
 \begin{abstract}
-We compare two intersection control schemes -- a four-arm roundabout and a pair of opposing-phase traffic lights -- on identical road geometry, using a custom Python simulation in which each car follows a Lennard-Jones-style braking law and is spawned as a Poisson process at the entrance of an arm. We sweep traffic volume, asymmetric loading, and signal cycle length and measure the mean passing time and the total exit flow rate. In the configuration tested, the traffic light is faster than the roundabout at every density studied, with the gap growing from $\sim 2$~s at very light traffic to roughly $35$--$40$~s at heavy traffic. The roundabout, however, exhibits a striking direction-dependent bias: under one-way traffic on perpendicular arms, vertical-arm cars often wait tens of seconds longer than horizontal-arm cars because of the yield-to-the-left rule. This effect is qualitatively the same as the rush-hour bias commonly observed at the Armdale Roundabout in Halifax. The traffic light is much more balanced between directions and saturates the total exit flow at $\sim 0.35$~cars/s against $\sim 0.14$--$0.19$~cars/s for the roundabout.
+We built a Python simulation of a four-arm intersection so we could compare two ways of running it: a roundabout, and a pair of traffic lights on opposite phases. Both setups use the same road layout. Each car follows a Lennard-Jones braking rule, and cars arrive as a Poisson process at the start of an arm. We then swept across traffic volume, asymmetric loading, and signal cycle length, tracking two numbers: the mean passing time per car and the total exit flow rate. The traffic light was faster than the roundabout at every density we tested. At very light traffic the gap was only about 2 seconds, but at heavy traffic the lights were 35 to 40 seconds faster on average. The roundabout also showed a clear direction-dependent bias. Under one-way perpendicular traffic, vertical-arm cars often waited tens of seconds longer than horizontal-arm cars because of the yield-to-the-left rule. This is the same kind of bias that Halifax drivers notice at the Armdale Roundabout during rush hour. The traffic light treated both directions much more equally, and its total exit flow saturated near 0.35 cars per second, against roughly 0.14 to 0.19 cars per second for the roundabout.
 \end{abstract}
 
 \tableofcontents
@@ -63,8 +63,8 @@ What would happen if we replaced all traffic lights with roundabouts? Would you 
 
 The simulation tracks individual cars with continuous position, velocity, and acceleration. The two performance metrics we care about are
 \begin{itemize}
-    \item \textbf{mean passing time} -- the time elapsed between a car spawning at the road boundary and exiting on the far side of the intersection;
-    \item \textbf{exit flow rate} -- the number of cars that successfully clear the intersection per unit of simulation time, summed over the two emitting arms.
+    \item \textbf{mean passing time}: how long it takes a car to get from the entry boundary to the far side of the intersection.
+    \item \textbf{exit flow rate}: the number of cars per second that make it through, summed over both emitting arms.
 \end{itemize}
 
 We control the system through a small set of parameters that fall into two natural groups. The model parameters describing how each driver behaves are held fixed across all runs:
@@ -88,11 +88,11 @@ The remainder of this report is organised as follows. Section~\ref{sec:method} d
 \section{Method}\label{sec:method}
 
 \subsection{Assumptions}
-We work with a deliberately stripped-down model so that the comparison between roundabout and traffic light is clean.
+We use a stripped-down model so the comparison between the two control schemes is clean.
 
 \begin{enumerate}
     \item Each road has a single lane in the direction of travel. Opposite-direction traffic on the same arm is not modelled (the project handout explicitly allows this).
-    \item Cars maintain their direction through the intersection -- no turns. Horizontal traffic enters from the west arm and exits east; vertical traffic enters from the south arm and exits north.
+    \item Cars do not turn at the intersection. They keep going straight, so horizontal traffic enters from the west arm and exits east, and vertical traffic enters from the south arm and exits north.
     \item Cars do not overtake on a given road.
     \item Driver behaviour is identical for all cars (uniform $v_{\text{target}}$, $\tau$, $\sigma$).
     \item No yellow phase: the traffic light is purely red/green, switching every $T_{\text{cycle}}/2$.
@@ -109,7 +109,7 @@ Each car has a position $s$ along its road, a longitudinal velocity $v$, and a t
     a = \frac{v_{\text{target}} - v}{\tau} \;-\; \left(\frac{\sigma}{R}\right)^{12} v ,
     \label{eq:lj}
 \end{equation}
-where $R$ is the gap to the obstacle ahead -- either a leading car or, when applicable, a stop line. The first term is a relaxation toward target speed; the second is the Lennard-Jones brake from the project handout, which grows extremely quickly when $R$ falls below $\sigma$. We integrate forward in Euler steps of $\Delta t = 0.05$~s for all analysis sweeps; the visual demos use $\Delta t = 0.1$~s for speed, and we have verified the conclusions are unchanged across that range. Velocities are clipped at zero so cars never reverse.
+where $R$ is the gap to the obstacle in front, which is either the leading car or a stop line when there is one. The first term relaxes the car toward its target speed. The second term is the Lennard-Jones brake from the project handout, which grows very quickly once $R$ drops below $\sigma$. We integrate forward in Euler steps of $\Delta t = 0.05$~s for every analysis sweep. The animations use $\Delta t = 0.1$~s for speed, and we re-ran the roundabout sweep at that step size to confirm the conclusions did not change. Velocities are clipped at zero so cars never reverse.
 
 \subsection{Roundabout and traffic-light setup}
 Figure~\ref{fig:setup} shows the geometry of both intersections.
@@ -133,9 +133,9 @@ Figure~\ref{fig:setup} shows the geometry of both intersections.
     \label{fig:setup}
 \end{figure}
 
-In the roundabout (Figure~\ref{fig:setup_round}) the central ring has radius $R_{\text{ring}}=15$~m. Each car is described in polar coordinates $(r, \theta)$ and moves through a small state machine: \texttt{approach} on its entry arm (decreasing $r$), \texttt{circle} inside the ring (constant $r$, increasing $\theta$), \texttt{exit} on its outgoing arm (increasing $r$), and \texttt{done} once it leaves the simulation boundary. A vehicle in \texttt{approach} state may transition to \texttt{circle} only if no vehicle in the ring is within an angular distance $\sim \pi/3$ counter-clockwise of the entry point -- the standard yield-to-the-left rule. Inside the ring vehicles cruise at a target tangential speed of $5.5$~m/s and follow each other using the same Lennard-Jones interaction in arc-length space. They exit the ring once they have travelled the angular distance to their assigned exit and continue onto the corresponding outgoing arm.
+In the roundabout (Figure~\ref{fig:setup_round}) the central ring has radius $R_{\text{ring}}=15$~m. Each car is tracked in polar coordinates $(r, \theta)$ and runs through a small state machine: \texttt{approach} on its entry arm with $r$ decreasing, \texttt{circle} inside the ring with $r$ constant and $\theta$ increasing, \texttt{exit} on its outgoing arm with $r$ increasing, and \texttt{done} once it leaves the simulation boundary. A car in \texttt{approach} state can move to \texttt{circle} only if there is no car in the ring within roughly $\pi/3$ radians counter-clockwise of the entry point. That is what gives us the yield-to-the-left rule. Inside the ring, cars cruise at a target tangential speed of $5.5$~m/s and follow each other using the same Lennard-Jones interaction, just measured in arc-length instead of straight-line distance. A car leaves the ring once it has covered the angular distance to its assigned exit, then continues out along the matching outgoing arm.
 
-In the traffic-light setup (Figure~\ref{fig:setup_lights}) two perpendicular roads cross at the origin. Horizontal and vertical signals are exactly $180^{\circ}$ out of phase (when one is red, the other is green). A red light is treated by an approaching car as a stationary obstacle at the stop line; once the light turns green the obstacle disappears and the car accelerates back to $v_{\text{target}}$.
+In the traffic-light setup (Figure~\ref{fig:setup_lights}) two perpendicular roads cross at the origin. The horizontal and vertical signals are $180^{\circ}$ out of phase, so when one is red the other is green. An approaching car treats a red light as a stationary obstacle at the stop line. Once the light turns green that obstacle goes away and the car accelerates back to $v_{\text{target}}$.
 
 \subsection{Symmetric vs.\ asymmetric loading}
 Most analyses are organised around the distinction between symmetric and asymmetric loading, summarised in Table~\ref{tab:symmetric_asymmetric}.
@@ -149,7 +149,7 @@ Most analyses are organised around the distinction between symmetric and asymmet
 \textbf{Definition} & Same spawn rate on both perpendicular roads. & Different spawn rates on the two roads. \\ \hline
 \textbf{Physical meaning} & Balanced flow from both directions. & Uneven, rush-hour-like flow. \\ \hline
 \textbf{Output we plot} & Line plot of mean passing time vs.\ spawn rate. & Heatmap of mean passing time as a function of $(r_H, r_V)$. \\ \hline
-\textbf{Symmetry expected} & Statistically symmetric in $H \leftrightarrow V$. & Need not be symmetric -- one direction can dominate. \\ \hline
+\textbf{Symmetry expected} & Statistically symmetric in $H \leftrightarrow V$. & Need not be symmetric: one direction can dominate. \\ \hline
 \textbf{Project relevance} & Baseline behaviour. & Tests whether the geometry favours one direction (Armdale-style bias). \\ \hline
 \end{tabular}
 \caption{Comparison of symmetric and asymmetric loading.}
@@ -167,7 +167,7 @@ We sweep across spawn rates from $0.05$ to $0.80$~cars/s/road and across cycle p
 \section{Results}\label{sec:results}
 
 \subsection{Symmetric traffic}
-Figure~\ref{fig:sym_density} shows the mean passing time as a function of spawn rate when both roads carry the same load. Both control schemes start near $\sim 18$--$20$~s at low density (the time for a free-flowing car to travel the arm-plus-intersection-plus-exit distance at $\sim 11$~m/s, plus a small overhead). The traffic light grows gently, reaching only $\sim 22$~s at $0.80$~cars/s. The roundabout grows much more sharply -- doubling by $0.40$~cars/s and saturating near $\sim 60$~s for higher loads. The saturation is because the V-arm queue grows beyond the simulated road, so fewer cars actually reach the finish line in the simulation window.
+Figure~\ref{fig:sym_density} plots mean passing time against spawn rate when both roads carry the same load. Both setups start at about 18 to 20 seconds at low density. That is roughly the time it takes a car to travel the full arm plus intersection plus exit distance at 11 m/s, plus a small overhead. The traffic light then grows gently, only reaching about 22 seconds at a spawn rate of 0.80 cars per second. The roundabout grows much more steeply: it doubles by 0.40 cars per second and saturates near 60 seconds at higher loads. The reason it saturates is that the V-arm queue eventually grows past the end of the simulated road, so fewer of those cars actually reach the finish line within the simulation window.
 
 \begin{figure}[H]
     \centering
@@ -195,7 +195,7 @@ The headline numerical comparison is in Figure~\ref{fig:headtohead}. Across ever
 \begin{figure}[H]
     \centering
     \includegraphics[width=0.92\textwidth]{fig_analysis6_roundabout_vs_lights.png}
-    \caption{Direct head-to-head comparison: mean passing time on the left, $\langle t \rangle_{\text{lights}} - \langle t \rangle_{\text{round}}$ on the right. The gap is negative everywhere -- the light is faster at every density tested -- and grows dramatically once the roundabout starts to bottleneck.}
+    \caption{Direct head-to-head comparison: mean passing time on the left, $\langle t \rangle_{\text{lights}} - \langle t \rangle_{\text{round}}$ on the right. The gap is negative across the whole sweep (the light is always faster) and grows quickly once the roundabout starts to bottleneck.}
     \label{fig:headtohead}
 \end{figure}
 
@@ -230,7 +230,7 @@ The asymmetry is even more visible when we plot the difference $\langle t \rangl
     \begin{subfigure}[t]{0.49\textwidth}
         \centering
         \includegraphics[width=\textwidth]{fig_analysis4_roundabout_hv_difference.png}
-        \caption{Roundabout: $H - V$ is usually negative in the loaded region -- V cars are often slower, by tens of seconds.}
+        \caption{Roundabout: $H - V$ is usually negative in the loaded region, meaning V cars are often slower by tens of seconds.}
         \label{fig:hv_round}
     \end{subfigure}
     \hfill
@@ -244,7 +244,7 @@ The asymmetry is even more visible when we plot the difference $\langle t \rangl
     \label{fig:hv_diff}
 \end{figure}
 
-For the roundabout, the $H - V$ map is strongly negative through much of the loaded region and reaches tens of seconds in magnitude. When horizontal traffic is very heavy and vertical traffic is light, the sign can reverse, but the key result is still that the roundabout can strongly favour one stream over the other. For the light, the difference stays much smaller -- only a few seconds across the grid -- because both directions receive alternating green phases.
+For the roundabout, the $H - V$ map is strongly negative across most of the loaded region and reaches tens of seconds in magnitude. The sign can flip when horizontal traffic is very heavy and vertical traffic is light, but the main point still holds: the roundabout can strongly favour one stream over the other. For the light, the difference stays much smaller, only a few seconds across the grid, because both directions get alternating green phases.
 
 \subsection{Flow-rate comparison}
 Figure~\ref{fig:flow} shows total exit flow as a function of spawn rate, plus the throughput efficiency (exit flow divided by twice the per-arm spawn rate).
@@ -266,9 +266,9 @@ The simulation cleanly answers each of the project's six main suggested analysis
     \item \textbf{Roundabout passing time at moderate density.} At $r_H = r_V = 0.3$~cars/s, the roundabout mean passing time is $\sim 52$~s overall ($H = 40$~s, $V = 75$~s), demonstrating an immediate $\sim 35$~s asymmetry.
     \item \textbf{Density dependence.} Mean passing time grows monotonically with density on the roundabout, sharply steepening above $r \approx 0.2$ as the V-arm queue overflows the simulated road.
     \item \textbf{Asymmetric heatmap.} The roundabout contour is not symmetric. Vertical-side density has a much stronger effect than horizontal-side density, because the CCW yield rule favours horizontal traffic.
-    \item \textbf{$H - V$ bias.} The bias reaches tens of seconds in favour of one stream in the high-load region -- analogous to the rush-hour Armdale Roundabout bias the project introduction mentions.
+    \item \textbf{$H - V$ bias.} The bias reaches tens of seconds in favour of one stream in the high-load region. This is the same kind of rush-hour bias the project introduction describes for the Armdale Roundabout.
     \item \textbf{Repeating with a traffic light.} The light is faster than the roundabout at every density tested (Figure~\ref{fig:headtohead}). Its $H - V$ heatmap stays within only a few seconds across the tested grid, and the asymmetric passing time is much closer to symmetric in $(r_H, r_V)$. The cycle-period sweep finds an optimum around $15$--$20$~s.
-    \item \textbf{When does the roundabout win?} In this configuration -- one-way traffic on each arm, no opposing-direction traffic, fixed yield-to-the-left rule -- the answer in our simulation is \emph{never}. The light beats the roundabout at every spawn rate from $0.05$ to $0.80$~cars/s. This is a configuration-specific finding; in a real Halifax intersection, opposing-direction traffic and turning movements would change the picture, and roundabouts have other advantages (lower severe-collision rate, no signal maintenance, no power requirements) that lie outside the scope of the mean-passing-time / throughput metric we measured.
+    \item \textbf{When does the roundabout win?} In this configuration (one-way traffic on each arm, no opposing-direction traffic, fixed yield-to-the-left rule) our simulation says \emph{never}. The light beats the roundabout at every spawn rate from 0.05 to 0.80 cars per second. That result is specific to this configuration. In a real Halifax intersection, opposing-direction traffic and turning movements would change the picture, and roundabouts also have other advantages we did not measure here, like a lower severe-collision rate, no signal maintenance, and no power requirement.
 \end{enumerate}
 
 \subsection{Conditions where each scheme dominates}
@@ -284,20 +284,20 @@ Table~\ref{tab:comparison} summarises the qualitative behaviour we observed acro
 Symmetric, light & Smooth flow, mean $\sim 20$~s. & Slightly faster, mean $\sim 18$~s. \\ \hline
 Symmetric, medium & Mean climbs to $\sim 36$~s at $r=0.3$, $\sim 48$~s at $r=0.4$. V-arm starts queueing. & Mean grows gently to $\sim 19$--$21$~s. Cycle period of $15$--$20$~s is optimal. \\ \hline
 Symmetric, heavy & Saturated entry flow $\sim 0.14$--$0.19$~cars/s; cars back up onto the arms. & Saturated entry flow $\sim 0.35$~cars/s; remains the higher-throughput option. \\ \hline
-Asymmetric, light & Small bias visible -- V cars wait $\sim 2$--$5$~s longer than H cars. & Approximately fair; bias smaller than $\sim 1$~s. \\ \hline
-Asymmetric, medium & Strong bias -- one stream can wait tens of seconds longer (typically $20$--$50$~s); the lighter direction can be starved. & Almost fair; directional bias remains only a few seconds. \\ \hline
-Asymmetric, heavy & Severe bias -- one stream can wait tens of seconds longer; throughput collapses on the blocked arm. & Modestly biased, usually within a few seconds; throughput remains high. \\ \hline
+Asymmetric, light & Small bias visible. V cars wait $\sim 2$--$5$~s longer than H cars. & Approximately fair; bias smaller than $\sim 1$~s. \\ \hline
+Asymmetric, medium & Strong bias. One stream can wait tens of seconds longer (typically $20$--$50$~s) and the lighter direction can be starved. & Almost fair; directional bias remains only a few seconds. \\ \hline
+Asymmetric, heavy & Severe bias. One stream can wait tens of seconds longer and throughput collapses on the blocked arm. & Modestly biased, usually within a few seconds. Throughput remains high. \\ \hline
 \end{tabular}
 \caption{Qualitative behaviour observed in our simulation. The traffic light is the higher-throughput, more egalitarian option in every regime tested.}
 \label{tab:comparison}
 \end{table}
 
 \subsection{What this means in practice}
-Three caveats are important when interpreting this conclusion. First, our roundabout uses one-way traffic on each arm only, so there is no opposing direction and the yield-to-the-left rule has no chance of becoming symmetric. Real roundabouts circulate traffic from all four arms simultaneously, which restores some of the symmetry the model is missing -- and in fact our \texttt{run\_roundabout\_sim} function supports this directly via its \texttt{opposite=True} flag. Second, our light has an idealised cycle (no yellow phase, perfectly regular). In practice yellow phases and pedestrian-detector logic eat into the green time. Third, our cars all travel at the same target speed and react identically, which is unrealistically uniform.
+Three caveats matter for how we read this conclusion. First, our roundabout only has one-way traffic on each arm, so there is no opposing direction and the yield-to-the-left rule never has a chance to become symmetric. Real roundabouts circulate traffic from all four arms at the same time, which would restore some of the symmetry our model is missing. Our \texttt{run\_roundabout\_sim} function does support this through its \texttt{opposite=True} flag, but we did not include those runs in the main sweeps. Second, our traffic light is idealised: no yellow phase, perfectly regular cycle. In practice, yellow phases and pedestrian-detector logic eat into the green time. Third, all of our cars run at the same target speed and react identically, which is more uniform than real traffic.
 
-Within those limits, the answer is that traffic lights are more efficient on average for one-way perpendicular traffic at every density we tested. Our data does not show any crossover where the roundabout overtakes the lights; identifying such a regime would likely require modelling opposing-direction circulation or shorter inter-arm spacing, neither of which we explored here.
+Even with those caveats, the data is clear. Traffic lights are more efficient on average for one-way perpendicular traffic at every density we tested. We do not see any crossover where the roundabout takes over. Finding such a regime would probably require modelling opposing-direction circulation, or pushing the arms closer to the ring, and we did not explore either of those.
 
-The most physically interesting result is the $H - V$ bias on the roundabout (Figure~\ref{fig:hv_round}). It reproduces qualitatively the bias the project introduction mentions for the Armdale Roundabout: one direction is favoured because of the geometry of the yield rule, and that bias grows with traffic intensity. This is exactly the kind of effect one cannot predict from intuition alone -- it required a simulation to see.
+The most interesting result for us was the $H - V$ bias on the roundabout (Figure~\ref{fig:hv_round}). It looks like the same bias the project introduction describes at the Armdale Roundabout: one direction gets favoured because of how the yield rule is set up, and that bias grows with traffic intensity. This is hard to predict by intuition alone. We needed the simulation to see it.
 
 \appendix
 \section{Code listings}\label{sec:appendix-code}

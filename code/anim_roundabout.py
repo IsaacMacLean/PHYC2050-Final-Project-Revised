@@ -10,13 +10,13 @@ from step4_roundabout_demo import draw_base_roads
 def main():
     out = run_roundabout_sim(
         rate_h=0.10, rate_v=0.10, opposite=True,
-        T=120.0, dt=0.05, seed=3,
-        record=True, record_stride=1,
+        T=80.0, dt=0.05, seed=3,
+        record=True, record_stride=2,
     )
     radius = out["radius"]
     extent = out["road_length"] + 8.0
     frames = out["frames"]
-    lane_offset = 3.0
+    lane_offset = 4.5
 
     fig = plt.figure(figsize=(8, 8), dpi=120)
     ax = fig.add_axes([0, 0, 1, 1])
@@ -64,8 +64,8 @@ def main():
         title.set_text(f"Four-arm roundabout (t = {snap['time']:.0f} s)")
         return scat, title
 
-    anim = FuncAnimation(fig, update, frames=len(frames), interval=33, blit=False)
-    writer = FFMpegWriter(fps=30, bitrate=3200,
+    anim = FuncAnimation(fig, update, frames=len(frames), interval=20, blit=False)
+    writer = FFMpegWriter(fps=50, bitrate=3200,
                           extra_args=["-pix_fmt", "yuv420p"])
     anim.save("../animations/roundabout.mp4", writer=writer, dpi=120,
               savefig_kwargs={"facecolor": "white"})
