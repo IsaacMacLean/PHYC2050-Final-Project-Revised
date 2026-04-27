@@ -10,13 +10,13 @@ def main():
     out = run_roundabout_sim(
         rate_h=0.12, rate_v=0.08, opposite=True,
         T=140.0, dt=0.1, seed=3,
-        record=True, record_stride=3,
+        record=True, record_stride=2,
     )
     radius = out["radius"]
     extent = out["road_length"] + 8.0
     frames = out["frames"]
 
-    max_frames = 320
+    max_frames = 420
     if len(frames) > max_frames:
         keep = np.linspace(0, len(frames) - 1, max_frames).astype(int)
         frames = [frames[i] for i in keep]
@@ -64,7 +64,7 @@ def main():
 
     anim = FuncAnimation(fig, update, frames=len(frames), init_func=init,
                          interval=60, blit=True)
-    writer = FFMpegWriter(fps=16, bitrate=3200,
+    writer = FFMpegWriter(fps=20, bitrate=3200,
                           extra_args=["-pix_fmt", "yuv420p"])
     anim.save("../animations/roundabout.mp4", writer=writer, dpi=120,
               savefig_kwargs={"facecolor": "white"})

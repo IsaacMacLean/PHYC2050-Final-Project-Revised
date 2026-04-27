@@ -7,7 +7,8 @@ from round_core import run_roundabout_sim, ARM_COLORS, TWOPI, arm_angle
 
 
 LANE_OFFSET = 3.0
-CIRCLE_BLEND_ARC = 8.0
+CIRCLE_BLEND_ARC = 12.0
+ARM_BLEND_RADIAL = 18.0
 
 
 def smoothstep(x):
@@ -23,18 +24,35 @@ def exit_lane_vector(theta):
     return math.sin(theta), -math.cos(theta)
 
 
+def blended_arm_radius(r, radius):
+    dr = max(0.0, r - radius)
+    if dr >= ARM_BLEND_RADIAL:
+        return r
+    return radius + dr * smoothstep(dr / ARM_BLEND_RADIAL)
+
+
+def offset_arm_position(theta, r, offset_vec, radius):
+    visual_r = blended_arm_radius(r, radius)
+    return (
+        visual_r * math.cos(theta) + LANE_OFFSET * offset_vec[0],
+        visual_r * math.sin(theta) + LANE_OFFSET * offset_vec[1],
+    )
+
+
 def lane_position(c, radius=15.0):
     x, y = c["x"], c["y"]
     state = c["state"]
     theta = c["theta"]
 
     if state == "approach":
-        ox, oy = approach_lane_vector(theta)
-        return x + LANE_OFFSET * ox, y + LANE_OFFSET * oy
+        return offset_arm_position(
+            theta, math.hypot(x, y), approach_lane_vector(theta), radius
+        )
 
     if state == "exit":
-        ox, oy = exit_lane_vector(theta)
-        return x + LANE_OFFSET * ox, y + LANE_OFFSET * oy
+        return offset_arm_position(
+            theta, math.hypot(x, y), exit_lane_vector(theta), radius
+        )
 
     if state != "circle":
         return x, y
