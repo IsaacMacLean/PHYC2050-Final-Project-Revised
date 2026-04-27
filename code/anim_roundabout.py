@@ -1,4 +1,3 @@
-import math
 import matplotlib.pyplot as plt
 import numpy as np
 from matplotlib.animation import FuncAnimation, FFMpegWriter
@@ -9,17 +8,20 @@ from step4_roundabout_demo import draw_base_roads
 
 def main():
     out = run_roundabout_sim(
-        rate_h=0.10, rate_v=0.10, opposite=True,
-        T=80.0, dt=0.05, seed=3,
-        record=True, record_stride=2,
+        rate_h=0.12, rate_v=0.08, opposite=True,
+        T=140.0, dt=0.1, seed=3,
+        record=True, record_stride=3,
     )
     radius = out["radius"]
     extent = out["road_length"] + 8.0
     frames = out["frames"]
-    lane_offset = 4.5
 
-    fig = plt.figure(figsize=(8, 8), dpi=120)
-    ax = fig.add_axes([0, 0, 1, 1])
+    max_frames = 320
+    if len(frames) > max_frames:
+        keep = np.linspace(0, len(frames) - 1, max_frames).astype(int)
+        frames = [frames[i] for i in keep]
+
+    fig, ax = plt.subplots(figsize=(8, 8), dpi=120)
     ax.set_aspect("equal")
     ax.set_xlim(-extent, extent)
     ax.set_ylim(-extent, extent)
@@ -28,44 +30,40 @@ def main():
 
     handles = []
     for arm in range(4):
-        h = ax.scatter([], [], s=70, c=ARM_COLORS[arm], edgecolor="black", lw=0.6,
-                       label=f"arm {arm} ({['E', 'N', 'W', 'S'][arm]})")
+        h, = ax.plot([], [], "o", ms=8, color=ARM_COLORS[arm],
+                     label=f"arm {arm} ({['E', 'N', 'W', 'S'][arm]})")
         handles.append(h)
     ax.legend(handles=handles, loc="upper right", fontsize=9, framealpha=0.85)
 
-    scat = ax.scatter(np.zeros(0), np.zeros(0), s=70,
-                      edgecolor="black", lw=0.6, zorder=10)
+    max_cars = max((len(snap["cars"]) for snap in frames), default=0)
+    car_dots = [ax.plot([], [], "o", ms=8, zorder=10)[0] for _ in range(max_cars)]
+
     title = ax.text(0.5, 0.97, "", transform=ax.transAxes,
                     ha="center", va="top", fontsize=12,
                     bbox=dict(facecolor="white", edgecolor="none", alpha=0.85))
 
-    def positions(snap):
-        xs, ys, cs = [], [], []
-        for c in snap["cars"]:
-            x, y = c["x"], c["y"]
-            theta = c.get("theta", math.atan2(y, x))
-            nx, ny = -math.sin(theta), math.cos(theta)
-            if c["state"] == "approach":
-                x += lane_offset * nx; y += lane_offset * ny
-            elif c["state"] == "exit":
-                x -= lane_offset * nx; y -= lane_offset * ny
-            xs.append(x); ys.append(y); cs.append(c["color"])
-        return xs, ys, cs
+    def init():
+        for dot in car_dots:
+            dot.set_data([], [])
+            dot.set_alpha(0.0)
+        title.set_text("")
+        return car_dots + [title]
 
     def update(idx):
         snap = frames[idx]
-        xs, ys, cs = positions(snap)
-        if xs:
-            scat.set_offsets(np.column_stack([xs, ys]))
-            scat.set_facecolors(cs)
-        else:
-            scat.set_offsets(np.empty((0, 2)))
-            scat.set_facecolors([])
+        for dot in car_dots:
+            dot.set_data([], [])
+            dot.set_alpha(0.0)
+        for dot, c in zip(car_dots, snap["cars"]):
+            dot.set_data([c["x"]], [c["y"]])
+            dot.set_color(c["color"])
+            dot.set_alpha(1.0)
         title.set_text(f"Four-arm roundabout (t = {snap['time']:.0f} s)")
-        return scat, title
+        return car_dots + [title]
 
-    anim = FuncAnimation(fig, update, frames=len(frames), interval=20, blit=False)
-    writer = FFMpegWriter(fps=50, bitrate=3200,
+    anim = FuncAnimation(fig, update, frames=len(frames), init_func=init,
+                         interval=30, blit=True)
+    writer = FFMpegWriter(fps=33, bitrate=3200,
                           extra_args=["-pix_fmt", "yuv420p"])
     anim.save("../animations/roundabout.mp4", writer=writer, dpi=120,
               savefig_kwargs={"facecolor": "white"})
