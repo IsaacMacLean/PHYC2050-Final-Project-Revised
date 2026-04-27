@@ -9,31 +9,22 @@ from step4_roundabout_demo import draw_base_roads
 
 LANE_OFFSET = 3.0
 BLEND_ZONE = 8.0
+ASPHALT_OUTER = 18.5
 
 
-def lane_position(c, ring_radius):
+def lane_position(c):
     x, y = c["x"], c["y"]
-    theta = c["theta"]
     state = c["state"]
-    r = math.hypot(x, y)
-
-    cos_t, sin_t = math.cos(theta), math.sin(theta)
-    radial = (cos_t, sin_t)
-
     if state == "circle":
-        ox, oy = radial
-    else:
-        if state == "approach":
-            perp = (-sin_t, cos_t)
-        else:
-            perp = (sin_t, -cos_t)
-        s = max(0.0, min(1.0, 1.0 - (r - ring_radius) / BLEND_ZONE))
-        bx = (1 - s) * perp[0] + s * radial[0]
-        by = (1 - s) * perp[1] + s * radial[1]
-        norm = math.hypot(bx, by)
-        ox, oy = (bx / norm, by / norm) if norm > 1e-9 else perp
+        return x, y
 
-    return x + LANE_OFFSET * ox, y + LANE_OFFSET * oy
+    theta = c["theta"]
+    cos_t, sin_t = math.cos(theta), math.sin(theta)
+    perp = (-sin_t, cos_t) if state == "approach" else (sin_t, -cos_t)
+
+    r = math.hypot(x, y)
+    s = max(0.0, min(1.0, (r - ASPHALT_OUTER) / BLEND_ZONE))
+    return x + LANE_OFFSET * s * perp[0], y + LANE_OFFSET * s * perp[1]
 
 
 def main():
@@ -85,7 +76,7 @@ def main():
             dot.set_data([], [])
             dot.set_alpha(0.0)
         for dot, c in zip(car_dots, snap["cars"]):
-            x, y = lane_position(c, radius)
+            x, y = lane_position(c)
             dot.set_data([x], [y])
             dot.set_color(c["color"])
             dot.set_alpha(1.0)
