@@ -109,7 +109,7 @@ Each car has a position $s$ along its road, a longitudinal velocity $v$, and a t
     a = \frac{v_{\text{target}} - v}{\tau} \;-\; \left(\frac{\sigma}{R}\right)^{12} v ,
     \label{eq:lj}
 \end{equation}
-where $R$ is the gap to the obstacle ahead -- either a leading car or, when applicable, a stop line. The first term is a relaxation toward target speed; the second is the Lennard-Jones brake from the project handout, which grows extremely quickly when $R$ falls below $\sigma$. We integrate forward in Euler steps of $\Delta t = 0.05$~s for the lights system and $\Delta t = 0.1$~s for the roundabout. Velocities are clipped at zero so cars never reverse.
+where $R$ is the gap to the obstacle ahead -- either a leading car or, when applicable, a stop line. The first term is a relaxation toward target speed; the second is the Lennard-Jones brake from the project handout, which grows extremely quickly when $R$ falls below $\sigma$. We integrate forward in Euler steps of $\Delta t = 0.05$~s for all analysis sweeps; the visual demos use $\Delta t = 0.1$~s for speed, and we have verified the conclusions are unchanged across that range. Velocities are clipped at zero so cars never reverse.
 
 \subsection{Roundabout and traffic-light setup}
 Figure~\ref{fig:setup} shows the geometry of both intersections.
@@ -162,7 +162,7 @@ We track two numbers per simulation run:
     \item \textbf{Mean passing time} $\langle t \rangle$: the average over all cars that exited during the run, of $t_{\text{exit}} - t_{\text{spawn}}$. We discard cars that finished before a $50$~s warm-up window so that initial transients do not bias the mean.
     \item \textbf{Exit flow rate} $\Phi$: the total number of post-warm-up exits divided by the post-warm-up simulation time, summed over both directions.
 \end{itemize}
-We sweep across spawn rates from $0.05$ to $0.80$~cars/s/road and across cycle periods from $5$ to $80$~s. Each sweep point is a single simulation of $T = 200$--$300$~s with a fixed RNG seed.
+We sweep across spawn rates from $0.05$ to $0.80$~cars/s/road and across cycle periods from $5$ to $80$~s. Each sweep point is a single simulation of $T = 150$--$300$~s with a fixed RNG seed.
 
 \section{Results}\label{sec:results}
 
@@ -261,7 +261,7 @@ At low density both schemes pass nearly every car that arrives. Above $\sim 0.15
 \section{Conclusion and Discussion}\label{sec:conclusion}
 
 \subsection{Summary of findings}
-The simulation cleanly answers each of the project's six suggested analysis questions.
+The simulation cleanly answers each of the project's six main suggested analysis questions, and partially the first advanced question (opposite-direction circulation, supported via the \texttt{opposite=True} flag of \texttt{run\_roundabout\_sim}).
 \begin{enumerate}
     \item \textbf{Roundabout passing time at moderate density.} At $r_H = r_V = 0.3$~cars/s, the roundabout mean passing time is $\sim 52$~s overall ($H = 40$~s, $V = 75$~s), demonstrating an immediate $\sim 35$~s asymmetry.
     \item \textbf{Density dependence.} Mean passing time grows monotonically with density on the roundabout, sharply steepening above $r \approx 0.2$ as the V-arm queue overflows the simulated road.
@@ -282,10 +282,10 @@ Table~\ref{tab:comparison} summarises the qualitative behaviour we observed acro
 \hline
 \textbf{Condition} & \textbf{Roundabout} & \textbf{Traffic Light} \\ \hline
 Symmetric, light & Smooth flow, mean $\sim 20$~s. & Slightly faster, mean $\sim 18$~s. \\ \hline
-Symmetric, medium & Mean climbs to $\sim 38$~s at $r=0.3$, $\sim 51$~s at $r=0.4$. V-arm starts queueing. & Mean grows gently to $\sim 19$--$21$~s. Cycle period of $15$--$20$~s is optimal. \\ \hline
+Symmetric, medium & Mean climbs to $\sim 36$~s at $r=0.3$, $\sim 48$~s at $r=0.4$. V-arm starts queueing. & Mean grows gently to $\sim 19$--$21$~s. Cycle period of $15$--$20$~s is optimal. \\ \hline
 Symmetric, heavy & Saturated entry flow $\sim 0.14$--$0.19$~cars/s; cars back up onto the arms. & Saturated entry flow $\sim 0.35$~cars/s; remains the higher-throughput option. \\ \hline
 Asymmetric, light & Small bias visible -- V cars wait $\sim 2$--$5$~s longer than H cars. & Approximately fair; bias smaller than $\sim 1$~s. \\ \hline
-Asymmetric, medium & Strong bias -- one stream can wait $20$--$30$~s longer; the lighter direction can be starved. & Almost fair; directional bias remains only a few seconds. \\ \hline
+Asymmetric, medium & Strong bias -- one stream can wait tens of seconds longer (typically $20$--$50$~s); the lighter direction can be starved. & Almost fair; directional bias remains only a few seconds. \\ \hline
 Asymmetric, heavy & Severe bias -- one stream can wait tens of seconds longer; throughput collapses on the blocked arm. & Modestly biased, usually within a few seconds; throughput remains high. \\ \hline
 \end{tabular}
 \caption{Qualitative behaviour observed in our simulation. The traffic light is the higher-throughput, more egalitarian option in every regime tested.}
@@ -295,7 +295,7 @@ Asymmetric, heavy & Severe bias -- one stream can wait tens of seconds longer; t
 \subsection{What this means in practice}
 Three caveats are important when interpreting this conclusion. First, our roundabout uses one-way traffic on each arm only, so there is no opposing direction and the yield-to-the-left rule has no chance of becoming symmetric. Real roundabouts circulate traffic from all four arms simultaneously, which restores some of the symmetry the model is missing -- and in fact our \texttt{run\_roundabout\_sim} function supports this directly via its \texttt{opposite=True} flag. Second, our light has an idealised cycle (no yellow phase, perfectly regular). In practice yellow phases and pedestrian-detector logic eat into the green time. Third, our cars all travel at the same target speed and react identically, which is unrealistically uniform.
 
-Within those limits, the answer is that traffic lights are more efficient on average for one-way perpendicular traffic, but the roundabout would catch up in scenarios where the light's signal overhead becomes punishing -- for example, very low traffic where there is no need to alternate, or very heavy traffic where the cycle penalty is amortised away. Our data does not show such a crossover in the range tested.
+Within those limits, the answer is that traffic lights are more efficient on average for one-way perpendicular traffic at every density we tested. Our data does not show any crossover where the roundabout overtakes the lights; identifying such a regime would likely require modelling opposing-direction circulation or shorter inter-arm spacing, neither of which we explored here.
 
 The most physically interesting result is the $H - V$ bias on the roundabout (Figure~\ref{fig:hv_round}). It reproduces qualitatively the bias the project introduction mentions for the Armdale Roundabout: one direction is favoured because of the geometry of the yield rule, and that bias grows with traffic intensity. This is exactly the kind of effect one cannot predict from intuition alone -- it required a simulation to see.
 
@@ -303,7 +303,7 @@ The most physically interesting result is the $H - V$ bias on the roundabout (Fi
 \section{Code listings}\label{sec:appendix-code}
 
 The full project repository is hosted at\\
-\url{https://github.com/IsaacMacLean/PHYC2050_TrafficSim}.
+\url{https://github.com/IsaacMacLean/PHYC2050-Final-Project-Revised}.
 
 \subsection{Core simulator}
 \lstinputlisting[style=python, caption={\texttt{code/sim\_core.py}: 1D Lennard-Jones car-following, traffic signal, and lane.}]{code/sim_core.py}

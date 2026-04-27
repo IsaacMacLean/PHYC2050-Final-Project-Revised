@@ -40,7 +40,7 @@ def main():
     axes[1].legend()
 
     axes[2].plot(times, gap, color="black")
-    axes[2].axhline(15.0, ls="--", color="gray", label=r"$\sigma$")
+    axes[2].axhline(7.0, ls="--", color="gray", label=r"$\sigma$")
     axes[2].set_xlabel("time (s)")
     axes[2].set_ylabel("gap (m)")
     axes[2].legend()
