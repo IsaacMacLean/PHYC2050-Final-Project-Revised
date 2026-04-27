@@ -8,7 +8,8 @@ from round_core import run_roundabout_sim, ARM_COLORS, TWOPI, arm_angle
 
 LANE_OFFSET = 3.0
 CIRCLE_BLEND_ARC = 12.0
-ARM_BLEND_RADIAL = 18.0
+ENTRY_RADIAL_BLEND = 1.2
+EXIT_RADIAL_BLEND = 0.5
 
 
 def smoothstep(x):
@@ -24,35 +25,18 @@ def exit_lane_vector(theta):
     return math.sin(theta), -math.cos(theta)
 
 
-def blended_arm_radius(r, radius):
-    dr = max(0.0, r - radius)
-    if dr >= ARM_BLEND_RADIAL:
-        return r
-    return radius + dr * smoothstep(dr / ARM_BLEND_RADIAL)
-
-
-def offset_arm_position(theta, r, offset_vec, radius):
-    visual_r = blended_arm_radius(r, radius)
-    return (
-        visual_r * math.cos(theta) + LANE_OFFSET * offset_vec[0],
-        visual_r * math.sin(theta) + LANE_OFFSET * offset_vec[1],
-    )
-
-
 def lane_position(c, radius=15.0):
     x, y = c["x"], c["y"]
     state = c["state"]
     theta = c["theta"]
 
     if state == "approach":
-        return offset_arm_position(
-            theta, math.hypot(x, y), approach_lane_vector(theta), radius
-        )
+        ox, oy = approach_lane_vector(theta)
+        return x + LANE_OFFSET * ox, y + LANE_OFFSET * oy
 
     if state == "exit":
-        return offset_arm_position(
-            theta, math.hypot(x, y), exit_lane_vector(theta), radius
-        )
+        ox, oy = exit_lane_vector(theta)
+        return x + LANE_OFFSET * ox, y + LANE_OFFSET * oy
 
     if state != "circle":
         return x, y
@@ -65,14 +49,20 @@ def lane_position(c, radius=15.0):
 
     if travelled < blend_angle:
         weight = 1.0 - smoothstep(travelled / blend_angle)
+        radial = ENTRY_RADIAL_BLEND * weight
         ox, oy = approach_lane_vector(entry_theta)
     elif remaining < blend_angle:
         weight = 1.0 - smoothstep(remaining / blend_angle)
+        radial = EXIT_RADIAL_BLEND * weight
         ox, oy = exit_lane_vector(exit_theta)
     else:
         return x, y
 
-    return x + LANE_OFFSET * weight * ox, y + LANE_OFFSET * weight * oy
+    visual_r = radius + radial
+    return (
+        visual_r * math.cos(theta) + LANE_OFFSET * weight * ox,
+        visual_r * math.sin(theta) + LANE_OFFSET * weight * oy,
+    )
 
 
 def draw_base_roads(ax, radius=15.0, extent=105.0, road_width=14.0):
@@ -104,7 +94,7 @@ def main():
     out = run_roundabout_sim(
         rate_h=0.10, rate_v=0.10, opposite=True,
         T=140.0, dt=0.1, seed=3,
-        record=True, record_stride=5,
+        stop_buffer=2.0, record=True, record_stride=5,
     )
     radius = out["radius"]
     extent = out["road_length"] + 8.0
