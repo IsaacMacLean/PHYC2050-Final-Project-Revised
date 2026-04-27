@@ -1,30 +1,9 @@
-import math
 import matplotlib.pyplot as plt
 import numpy as np
 from matplotlib.animation import FuncAnimation, FFMpegWriter
 
 from round_core import run_roundabout_sim, ARM_COLORS
-from step4_roundabout_demo import draw_base_roads
-
-
-LANE_OFFSET = 3.0
-BLEND_ZONE = 8.0
-ASPHALT_OUTER = 18.5
-
-
-def lane_position(c):
-    x, y = c["x"], c["y"]
-    state = c["state"]
-    if state == "circle":
-        return x, y
-
-    theta = c["theta"]
-    cos_t, sin_t = math.cos(theta), math.sin(theta)
-    perp = (-sin_t, cos_t) if state == "approach" else (sin_t, -cos_t)
-
-    r = math.hypot(x, y)
-    s = max(0.0, min(1.0, (r - ASPHALT_OUTER) / BLEND_ZONE))
-    return x + LANE_OFFSET * s * perp[0], y + LANE_OFFSET * s * perp[1]
+from step4_roundabout_demo import draw_base_roads, lane_position
 
 
 def main():
@@ -76,7 +55,7 @@ def main():
             dot.set_data([], [])
             dot.set_alpha(0.0)
         for dot, c in zip(car_dots, snap["cars"]):
-            x, y = lane_position(c)
+            x, y = lane_position(c, radius=radius)
             dot.set_data([x], [y])
             dot.set_color(c["color"])
             dot.set_alpha(1.0)

@@ -3,7 +3,58 @@ import matplotlib.pyplot as plt
 import numpy as np
 from matplotlib.patches import Circle, Rectangle
 
-from round_core import run_roundabout_sim, ARM_COLORS
+from round_core import run_roundabout_sim, ARM_COLORS, TWOPI, arm_angle
+
+
+LANE_OFFSET = 3.0
+CIRCLE_BLEND_ARC = 8.0
+
+
+def smoothstep(x):
+    x = max(0.0, min(1.0, x))
+    return x * x * (3.0 - 2.0 * x)
+
+
+def approach_lane_vector(theta):
+    return -math.sin(theta), math.cos(theta)
+
+
+def exit_lane_vector(theta):
+    return math.sin(theta), -math.cos(theta)
+
+
+def lane_position(c, radius=15.0):
+    x, y = c["x"], c["y"]
+    state = c["state"]
+    theta = c["theta"]
+
+    if state == "approach":
+        ox, oy = approach_lane_vector(theta)
+        return x + LANE_OFFSET * ox, y + LANE_OFFSET * oy
+
+    if state == "exit":
+        ox, oy = exit_lane_vector(theta)
+        return x + LANE_OFFSET * ox, y + LANE_OFFSET * oy
+
+    if state != "circle":
+        return x, y
+
+    entry_theta = arm_angle(c["arm"])
+    exit_theta = arm_angle(c.get("exit_arm", (c["arm"] + 2) % 4))
+    blend_angle = CIRCLE_BLEND_ARC / max(radius, 1e-9)
+    travelled = (theta - entry_theta) % TWOPI
+    remaining = (exit_theta - theta) % TWOPI
+
+    if travelled < blend_angle:
+        weight = 1.0 - smoothstep(travelled / blend_angle)
+        ox, oy = approach_lane_vector(entry_theta)
+    elif remaining < blend_angle:
+        weight = 1.0 - smoothstep(remaining / blend_angle)
+        ox, oy = exit_lane_vector(exit_theta)
+    else:
+        return x, y
+
+    return x + LANE_OFFSET * weight * ox, y + LANE_OFFSET * weight * oy
 
 
 def draw_base_roads(ax, radius=15.0, extent=105.0, road_width=14.0):
@@ -52,21 +103,10 @@ def main():
 
     draw_base_roads(ax, radius=radius, extent=extent)
 
-    lane_offset = 3.0
     if snap["cars"]:
         xs, ys, cs = [], [], []
         for c in snap["cars"]:
-            x, y = c["x"], c["y"]
-            theta = c.get("theta")
-            if theta is None:
-                theta = math.atan2(y, x)
-            nx, ny = -math.sin(theta), math.cos(theta)
-            if c["state"] == "approach":
-                x += lane_offset * nx
-                y += lane_offset * ny
-            elif c["state"] == "exit":
-                x -= lane_offset * nx
-                y -= lane_offset * ny
+            x, y = lane_position(c, radius=radius)
             xs.append(x); ys.append(y); cs.append(c["color"])
         ax.scatter(xs, ys, s=70, c=cs, edgecolor="black", lw=0.6, zorder=10)
 
